@@ -28,10 +28,15 @@ type Options struct {
 	TypeHint   string
 	OpenEditor bool
 	Clipboard  bool
+	UpdatePath string // if set, overwrite this existing note instead of creating a new one
 }
 
-// Run captures a new inbox note.
+// Run captures a new inbox note, or updates an existing one when UpdatePath is set.
 func Run(v *vault.Vault, r *templates.Renderer, opts Options) error {
+	if opts.UpdatePath != "" {
+		return runUpdate(v, opts)
+	}
+
 	if opts.Source != "" && !validSources[opts.Source] {
 		return fmt.Errorf("invalid source %q: must be one of manual, chatgpt, claude-code, copilot-cli, other", opts.Source)
 	}
@@ -79,6 +84,34 @@ func Run(v *vault.Vault, r *templates.Renderer, opts Options) error {
 	}
 
 	fmt.Println(path)
+	return nil
+}
+
+func runUpdate(v *vault.Vault, opts Options) error {
+	existing, err := v.ReadNote(opts.UpdatePath)
+	if err != nil {
+		return fmt.Errorf("read note: %w", err)
+	}
+
+	note, _, err := frontmatter.Parse(existing)
+	if err != nil {
+		return fmt.Errorf("parse frontmatter: %w", err)
+	}
+
+	newBody, err := resolveInput(opts)
+	if err != nil {
+		return err
+	}
+
+	note.Updated = v.NowInTZ().Format("2006-01-02")
+
+	content := append(frontmatter.MarshalSimple(note), append([]byte("\n"), []byte(newBody)...)...)
+
+	if err := v.OverwriteNote(opts.UpdatePath, content); err != nil {
+		return err
+	}
+
+	fmt.Println(opts.UpdatePath)
 	return nil
 }
 

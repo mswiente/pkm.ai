@@ -14,7 +14,20 @@ Steps:
    Strip the leading `# ` to get the title text.
    If no H1 heading exists, use the filename without extension as the title.
 
-3. Capture the note by running:
-   `cat "<plan-file-path>" | pkm capture --title "<extracted-title>" --source claude-code --type-hint knowledge`
+3. Check if this session already captured a plan note by running:
+   `cat /tmp/pkm-last-captured-plan.txt 2>/dev/null`
+   If the file exists and the path it contains points to an existing file, this is an update — go to step 4a.
+   Otherwise, this is a new capture — go to step 4b.
 
-4. Report the created note path to the user.
+4a. **Update** (plan was already captured this session):
+   Run: `cat "<plan-file-path>" | pkm capture --update "<existing-note-path>"`
+   Report to the user that the existing note was updated.
+   Skip to step 5.
+
+4b. **New capture**:
+   Run: `cat "<plan-file-path>" | pkm capture --title "<extracted-title>" --source claude-code --type-hint knowledge`
+   The command will print the created note path. Save that path for this session:
+   `echo "<created-note-path>" > /tmp/pkm-last-captured-plan.txt`
+   Report the created note path to the user.
+
+5. Done.

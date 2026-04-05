@@ -10,12 +10,13 @@ import (
 
 func newCaptureCommand(cfg *config.Config) *cobra.Command {
 	var (
-		title     string
-		source    string
-		tagsFlag  string
-		typeHint  string
-		editor    bool
-		clipboard bool
+		title      string
+		source     string
+		tagsFlag   string
+		typeHint   string
+		editor     bool
+		clipboard  bool
+		updatePath string
 	)
 
 	cmd := &cobra.Command{
@@ -52,6 +53,7 @@ Input sources (in priority order):
 				TypeHint:   typeHint,
 				OpenEditor: editor,
 				Clipboard:  clipboard,
+				UpdatePath: updatePath,
 			}
 			return capture.Run(v, r, opts)
 		},
@@ -63,6 +65,7 @@ Input sources (in priority order):
 	cmd.Flags().StringVar(&typeHint, "type-hint", "", "Hint for note classification (e.g. knowledge, decision)")
 	cmd.Flags().BoolVar(&editor, "editor", false, "Open in editor before saving")
 	cmd.Flags().BoolVar(&clipboard, "clipboard", false, "Read content from clipboard")
+	cmd.Flags().StringVar(&updatePath, "update", "", "Path to an existing note to update instead of creating a new one")
 
 	return cmd
 }

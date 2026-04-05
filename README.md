@@ -36,7 +36,7 @@ pkm config --set-vault-path ~/Documents/pkm-vault
 pkm skill install
 ```
 
-Installs available slash commands (e.g. `/capture-plan`) into `~/.claude/commands/`.
+Installs available slash commands (`/capture-plan`, `/distill-inbox`) into `~/.claude/commands/`.
 
 ## Commands
 
@@ -52,7 +52,7 @@ pkm capture --clipboard
 pkm capture --editor          # opens in $VISUAL/$EDITOR before saving
 ```
 
-**Flags:** `--title`, `--source`, `--tags`, `--type-hint`, `--editor`, `--clipboard`
+**Flags:** `--title`, `--source`, `--tags`, `--type-hint`, `--editor`, `--clipboard`, `--update`
 
 Valid sources: `manual`, `chatgpt`, `claude-code`, `copilot-cli`, `readwise`, `other`
 
@@ -98,16 +98,116 @@ pkm decision create --title "API versioning strategy" --project "platform" --fro
 
 ### `pkm process inbox`
 
-Analyze inbox notes and print a structured report — useful as context for a Claude Code session.
+Prints a structured report of inbox notes — the primary context-gathering tool for a Claude Code session.
 
 ```bash
-pkm process inbox
-pkm process inbox --file 2026-04-01-1200-manual-meeting-notes.md
-pkm process inbox --interactive   # walk through each note with a single-key action menu
+pkm process inbox                  # summary report of all inbox notes
+pkm process inbox --full           # full note bodies + current 04-knowledge/index.md
+pkm process inbox --file note.md   # single note
+pkm process inbox --interactive    # walk through each note with a single-key action menu
 pkm process inbox --dry-run
 ```
 
-No files are modified unless `--apply` is passed.
+**`--full` mode** is designed for distillation sessions: it outputs the complete body of every inbox note followed by the current `04-knowledge/index.md`, giving Claude Code everything it needs in a single pass to propose how each note should be processed and which topic pages to update.
+
+After reviewing the report, Claude Code calls `pkm knowledge` and `pkm note move` to apply changes.
+
+---
+
+### `pkm knowledge`
+
+Primitives for maintaining the `04-knowledge/` wiki. Called by Claude Code after it has analyzed inbox notes.
+
+#### `pkm knowledge append-topic`
+
+Appends markdown content (from stdin) to a `04-knowledge/<slug>.md` topic page. Creates the page with frontmatter if it does not exist.
+
+```bash
+echo "## From [[2026-04-03-readwise-article]]
+
+Key insight extracted as evergreen prose." \
+  | pkm knowledge append-topic ai-agents --title "AI Agents"
+
+pkm knowledge append-topic resilience-patterns --title "Resilience Patterns" \
+  --dry-run < content.md
+```
+
+#### `pkm knowledge update-index`
+
+Adds a `[[slug]] — description` entry to `04-knowledge/index.md`. No-op if the slug is already present.
+
+```bash
+pkm knowledge update-index ai-agents \
+  --description "agentic systems, LLM autonomy, multi-agent patterns"
+```
+
+#### `pkm knowledge append-log`
+
+Appends a processing entry to `04-knowledge/log.md` (the audit trail).
+
+```bash
+pkm knowledge append-log \
+  --note 2026-04-03-readwise-it-has-never-been-about-code.md \
+  --action "distill + file" \
+  --filed-to resources \
+  --updated software-engineering-philosophy \
+  --created llm-patterns
+```
+
+| Flag | Description |
+|------|-------------|
+| `--note` | Basename of the processed note (required) |
+| `--action` | Action taken, e.g. `"distill + file"` (required) |
+| `--filed-to` | Target folder the source note was moved to |
+| `--updated` | Comma-separated slugs of updated topic pages |
+| `--created` | Comma-separated slugs of newly created topic pages |
+
+---
+
+### `pkm project`
+
+Manage project context notes in `02-projects/`. Each project note has four sections:
+
+- **Intent** — what the project is trying to achieve (stable)
+- **Current Status** — what was last worked on (updated each session)
+- **Next Steps** — what to do next (updated each session)
+- **Plan History** — dated log of captured plans (append-only)
+
+#### `pkm project update`
+
+Create or update a project note. Only sections with provided flags are updated; others are left unchanged. If stdin contains content, it is appended to the Plan History section.
+
+```bash
+# Create a new project
+pkm project update pkm-ai \
+  --title "pkm.ai CLI" \
+  --intent "A lightweight CLI for a markdown-first PKM system." \
+  --current-status "Readwise sync and distill workflow implemented." \
+  --next-steps "- [ ] Add project management commands"
+
+# Update after a work session (with plan content from stdin)
+cat plan.md | pkm project update pkm-ai \
+  --current-status "Implemented pkm project commands." \
+  --next-steps "- [ ] Update distill skill\n- [ ] Write tests" \
+  --plan-heading "2026-04-06 — Project management"
+
+# Preview without writing
+pkm project update pkm-ai --current-status "..." --dry-run
+```
+
+**Flags:** `--title`, `--intent`, `--current-status`, `--next-steps`, `--plan-heading`, `--status` (`active`|`on-hold`|`archived`), `--dry-run`
+
+#### `pkm project list`
+
+List all project notes with their status.
+
+```bash
+pkm project list
+# ● pkm-ai                         pkm.ai CLI
+# ○ raycast-pkm                    Raycast PKM Extension
+```
+
+Markers: `●` active, `○` on-hold, `–` archived
 
 ---
 
@@ -204,9 +304,11 @@ After installation, invoke in a Claude Code session with e.g. `/capture-plan`.
 ```
 00-inbox/       # all new captures land here first
 01-daily/       # daily notes (YYYY-MM-DD.md)
-02-projects/    # project tracking
+02-projects/    # project tracking (managed by pkm project)
 03-areas/       # areas of responsibility
-04-knowledge/   # knowledge base (evergreen notes)
+04-knowledge/   # knowledge base (evergreen topic pages)
+  index.md      #   topic discovery map (managed by pkm knowledge update-index)
+  log.md        #   processing audit trail (managed by pkm knowledge append-log)
 05-resources/   # external resources and references
 06-decisions/   # decision log
 07-templates/   # note templates

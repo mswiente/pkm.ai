@@ -284,15 +284,24 @@ Grundform:
 pkm <command> [subcommand] [options]
 ```
 
-Beispielhafte Zielstruktur:
+Implementierte Kommandos (Stand 2026-04):
 
 ```bash
-pkm capture
-pkm process inbox
-pkm daily create
-pkm meeting create
-pkm decision create
-pkm config show
+pkm capture [text] [--title] [--source] [--tags] [--type-hint] [--editor] [--clipboard] [--update]
+pkm process inbox [--file] [--all] [--full] [--dry-run] [--apply] [--interactive]
+pkm daily create [--date] [--open]
+pkm meeting create [--title] [--date] [--project] [--participants]
+pkm decision create [--title] [--project] [--status] [--from-stdin]
+pkm note move <filename> <folder> [--type] [--status] [--dry-run]
+pkm knowledge append-topic <slug> --title <title> [--dry-run]
+pkm knowledge update-index <slug> --description <desc> [--dry-run]
+pkm knowledge append-log --note <file> --action <action> [--filed-to] [--updated] [--created]
+pkm project update <slug> [--title] [--intent] [--current-status] [--next-steps] [--plan-heading] [--status] [--dry-run]
+pkm project list
+pkm sync readwise [--dry-run] [--since] [--limit]
+pkm sync readwise auth
+pkm config --show | --set-vault-path <path>
+pkm skill list | install [name]
 ```
 
 ## 6.2 MVP-Kommandos
@@ -454,7 +463,7 @@ Optionale Flags:
 
 ## 6.3 Spätere Kommandos
 
-Nicht Teil des MVP, aber vorgesehen:
+Noch nicht implementiert, aber vorgesehen:
 
 ### `pkm note refine`
 
@@ -464,21 +473,9 @@ Verbessert eine bestehende Notiz AI-gestützt.
 
 Schlägt interne Links und verwandte Notizen vor.
 
-### `pkm note move`
-
-Verschiebt eine Notiz anhand definierter Regeln oder bestätigter Vorschläge.
-
 ### `pkm export chat`
 
 Standardisiert Export aus ChatGPT oder anderen Chat-Tools.
-
-### `pkm import session`
-
-Standardisiert Import von Claude-Code- oder Copilot-CLI-Sessions.
-
-### `pkm config show`
-
-Zeigt aktuelle Konfiguration wie Vault-Pfad, Templates-Pfad, Inbox-Pfad.
 
 ### `pkm config init`
 
@@ -761,6 +758,51 @@ Regeln:
 
 ## 10. AI-Workflows mit Claude Code und GitHub Copilot CLI
 
+## 10.0 Claude Code Skills
+
+Das System definiert wiederholbare AI-Workflows als **Claude Code Skills** (Slash Commands), die über `pkm skill install` installiert werden.
+
+Verfügbare Skills:
+
+### `/capture-plan`
+
+Erfasst den aktuellen Plan einer Claude Code Session als Inbox Note. Wird am Ende einer Coding Session aufgerufen, um die Planungsinhalte zu persistieren.
+
+### `/distill-inbox`
+
+Verarbeitet alle Inbox-Notizen nach dem Karpathy-Wiki-Muster:
+
+1. `pkm process inbox --full` liefert alle Notizen + den aktuellen Stand von `04-knowledge/index.md`
+2. Claude Code klassifiziert jede Notiz:
+   - **Plan-Notizen** (`source: claude-code` + `# Plan:` Heading): werden an `02-projects/` weitergeleitet, nicht destilliert
+   - **Reguläre Notizen**: werden als `distill`, `file-only` oder `skip` klassifiziert
+3. Für jede Notiz wird ein Plan präsentiert — der Nutzer bestätigt vor der Ausführung
+4. CLI-Kommandos (`pkm knowledge`, `pkm note move`, `pkm project update`) führen die Änderungen durch
+
+## 10.0a Karpathy Wiki Pattern (Distillation)
+
+Inspiriert durch Andrej Karpathys Ansatz für KI-gestützte Wissensbasen:
+
+* Inbox-Notizen sind kurzlebige Inputs — sie landen in `00-inbox/` und werden verarbeitet
+* Wertvolles Wissen wird als **Evergreen Prose** in `04-knowledge/<slug>.md` extrahiert — nicht als Zusammenfassung, sondern als zeitlose Erkenntnis
+* `04-knowledge/index.md` ist die Topic-Übersicht — sie wächst mit jedem Distillations-Lauf
+* `04-knowledge/log.md` ist der Audit-Trail — append-only, nie manuell bearbeiten
+* Quellen werden nach der Destillation ins richtige Zielverzeichnis verschoben und archiviert
+
+Anwendung: `pkm process inbox --full` + Claude Code (`/distill-inbox` Skill).
+
+## 10.0b Projekt-Tracking
+
+Plan-Notizen aus Claude Code Sessions (`source: claude-code` + `# Plan:` Heading) werden nicht destilliert, sondern an `02-projects/<slug>.md` weitergeleitet.
+
+Jede Projekt-Notiz hat vier Abschnitte:
+- **Intent** — dauerhaftes Ziel (stabil)
+- **Current Status** — was zuletzt erarbeitet wurde (wird pro Session aktualisiert)
+- **Next Steps** — was als nächstes zu tun ist (wird pro Session aktualisiert)
+- **Plan History** — datumgestempelte Einträge mit Wikilinks zu archivierten Plan-Notizen (append-only)
+
+Anwendung: `pkm project update <slug>` + `pkm project list`.
+
 ## 10.1 ChatGPT Export -> Inbox Note
 
 Ziel: wertvolle Chat-Inhalte in saubere Markdown-Notizen überführen.
@@ -830,6 +872,18 @@ Claude Code oder GitHub Copilot CLI sollen:
 * klare Struktur erzeugen
 * eine prägnante Zusammenfassung schreiben
 * mögliche Verbindungen zu anderen Themen hervorheben
+
+## 10.4a Readwise Reader Sync
+
+Gespeicherte Artikel aus Readwise Reader werden inkrementell in `00-inbox/` synchronisiert:
+
+```bash
+pkm sync readwise           # inkrementeller Sync (State-File)
+pkm sync readwise --dry-run
+pkm sync readwise auth      # Token einrichten
+```
+
+Jeder Artikel wird als Resource Note mit Highlights angelegt. Der Sync ist idempotent (URL-basierte Duplikaterkennung) und speichert den letzten Sync-Zeitpunkt in `~/.config/pkm/readwise_sync_state.json`.
 
 ## 10.5 Project Memory Support
 
@@ -1232,52 +1286,44 @@ Hinweise:
 ## 12.7 Project Note Template
 
 Zweck:
-Zentrale Einstiegsnotiz für ein Projekt.
+Persistente Projektverfolgung mit schnellem Kontext-Switch zwischen Projekten. Wird über `pkm project update` gepflegt, nicht manuell erstellt.
 
 ```markdown
 ---
 title: 
 type: project
 status: active
+source: claude-code
 created: 
 updated: 
 tags: [project]
-area: 
-owner: 
-related_notes: []
 ---
 
-# Project
+## Intent
 
-## Goal
-
-
-## Context
-
+Was das Projekt erreichen soll (stabil, selten geändert).
 
 ## Current Status
 
-
-## Key Notes
-
-- 
-
-## Decisions
-
-- 
-
-## Risks / Issues
-
-- 
+Was zuletzt erarbeitet wurde (wird pro Session aktualisiert).
 
 ## Next Steps
 
-- [ ] 
+- [ ] Nächste Aktion
+- [ ] Weitere Aktion
 
-## Links
+## Plan History
 
-- 
+### YYYY-MM-DD — Session-Beschreibung
+
+[[YYYY-MM-DD-HHMM-claude-code-plan-notiz]]
 ```
+
+Die vier Abschnitte:
+- **Intent** — dauerhaftes Projektziel
+- **Current Status** — Zustand nach der letzten Session
+- **Next Steps** — Checkliste für die nächste Session
+- **Plan History** — append-only Verlauf mit Wikilinks zu archivierten Plan-Notizen
 
 ## 12.8 Resource Note Template
 
@@ -1331,19 +1377,20 @@ Die Templates folgen folgenden Regeln:
 4. kompatibel mit manuellem Schreiben und CLI-Generierung
 5. geeignet für spätere Anreicherung durch `pkm process inbox`
 
-## 13. MVP
+## 13. MVP (implementiert)
 
-Der erste lauffähige Stand soll Folgendes umfassen:
+Der MVP ist vollständig umgesetzt. Stand 2026-04:
 
-* Obsidian Vault mit definierter Ordnerstruktur
-* Basis-Templates für die wichtigsten Notiztypen
-* einfache Metadaten-Konvention
-* Inbox-Workflow
-* Export-Workflow für ChatGPT -> Markdown -> Obsidian
-* Export-Workflow für Claude-Code- oder Copilot-CLI-Sessions -> Markdown -> Obsidian
-* Erstellung von Daily Notes, Meeting Notes und Decision Notes per Claude Code
-* 5 bis 8 praxistaugliche Prompts für Claude Code und GitHub Copilot CLI
-* optional Git-Repository für Versionierung
+* Obsidian Vault mit definierter Ordnerstruktur und Templates
+* `pkm capture` — schnelles Erfassen in `00-inbox/`
+* `pkm process inbox --full` — Kontext-Ausgabe für Claude Code Distillation Sessions
+* `pkm knowledge` — Karpathy-Wiki-Distillation: append-topic, update-index, append-log
+* `pkm project` — Projektverfolgung mit Intent / Status / Next Steps / Plan History
+* `pkm note move` — Verschieben mit automatischer Frontmatter-Aktualisierung
+* `pkm daily / meeting / decision create` — strukturierte Notizen aus Templates
+* `pkm sync readwise` — inkrementeller Readwise Reader Sync mit Highlights
+* Claude Code Skills: `/capture-plan`, `/distill-inbox`
+* Erste Distillation durchgeführt: 49 Notizen → 8 Knowledge Topic Pages
 
 ## 14. Spätere Ausbaustufen
 
@@ -1384,10 +1431,12 @@ Das System ist erfolgreich, wenn:
 
 ## 17. Nächste Schritte
 
-1. Scope für den MVP finalisieren
-2. Ordnerstruktur und Notiztypen bestätigen
-3. Templates definieren
-4. konkrete Claude-Code-Workflows festlegen
-5. Governance-Regeln für Änderungen durch AI festschreiben
-6. Beispiel-Vault mit 5 bis 10 Notizen anlegen
+MVP ist abgeschlossen. Nächste Ausbaustufen:
+
+1. Unit-Tests für `internal/readwise/` schreiben
+2. Raycast-Integration für schnelles Capture ohne Terminal
+3. `pkm note refine` — AI-gestützte Überarbeitung bestehender Notizen
+4. `pkm note link` — Vorschläge für interne Wikilinks
+5. Automatische Tag-Vergabe beim Capture oder Inbox-Processing
+6. Retrieval-gestützte Workflows (lokale Suche, Embeddings)
 

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -41,7 +42,40 @@ type Document struct {
 	UpdatedAt   time.Time      `json:"updated_at"`
 	SavedAt     time.Time      `json:"saved_at"`
 	WordCount   int            `json:"word_count"`
-	ReadingTime int            `json:"reading_time"`
+	ReadingTime flexInt        `json:"reading_time"`
+}
+
+// flexInt unmarshals JSON values that may be a number or a numeric string.
+type flexInt int
+
+func (f *flexInt) UnmarshalJSON(data []byte) error {
+	if len(data) == 0 || string(data) == "null" {
+		*f = 0
+		return nil
+	}
+	// Try plain number first.
+	var n int
+	if err := json.Unmarshal(data, &n); err == nil {
+		*f = flexInt(n)
+		return nil
+	}
+	// Try quoted string.
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	if s == "" {
+		*f = 0
+		return nil
+	}
+	// Handle "N mins" or other "<number> <unit>" formats.
+	if parts := strings.Fields(s); len(parts) >= 1 {
+		if n, err2 := strconv.Atoi(parts[0]); err2 == nil {
+			*f = flexInt(n)
+			return nil
+		}
+	}
+	return fmt.Errorf("flexInt: cannot parse %q", s)
 }
 
 type listResponse struct {

@@ -19,6 +19,7 @@ type Options struct {
 	DryRun      bool
 	Apply       bool
 	Interactive bool
+	Full        bool // output complete note bodies and the knowledge index
 }
 
 // inboxEntry holds per-file analysis data.
@@ -184,6 +185,9 @@ func printReport(v *vault.Vault, entries []inboxEntry, opts Options) {
 	fmt.Printf("Generated: %s\n", now)
 	fmt.Printf("Inbox: %s\n", v.InboxDir())
 	fmt.Printf("Files: %d markdown file(s)\n", len(entries))
+	if opts.Full {
+		fmt.Println("Mode: full (complete note bodies)")
+	}
 
 	withIssues := 0
 	missingTags := 0
@@ -207,10 +211,18 @@ func printReport(v *vault.Vault, entries []inboxEntry, opts Options) {
 		fmt.Printf("  Size:     %.1f KB\n", float64(e.FileSize)/1024)
 		fmt.Printf("  Modified: %s\n", e.ModTime.Format("2006-01-02 15:04"))
 
-		if e.BodyPreview != "" {
+		if opts.Full {
+			// Print the full raw file content so Claude Code can read everything
+			if raw, err := os.ReadFile(e.Path); err == nil {
+				fmt.Println()
+				fmt.Println("  Full content:")
+				for _, line := range strings.Split(string(raw), "\n") {
+					fmt.Printf("    %s\n", line)
+				}
+			}
+		} else if e.BodyPreview != "" {
 			fmt.Println()
 			fmt.Println("  Preview:")
-			// Indent the preview
 			for _, line := range strings.Split(e.BodyPreview, "\n") {
 				fmt.Printf("    %s\n", line)
 			}
@@ -225,7 +237,6 @@ func printReport(v *vault.Vault, entries []inboxEntry, opts Options) {
 			withIssues++
 		}
 
-		// Count stats
 		for _, issue := range e.Issues {
 			if strings.Contains(issue, "tags") {
 				missingTags++
@@ -254,11 +265,35 @@ func printReport(v *vault.Vault, entries []inboxEntry, opts Options) {
 		fmt.Println("(dry-run: no files were modified)")
 	}
 
+	// Append knowledge index so Claude Code knows what topic pages already exist
+	if opts.Full {
+		printKnowledgeIndex(v)
+	}
+
 	fmt.Println()
-	fmt.Println("Suggested next steps for AI processing:")
-	fmt.Println("  - Review each file above and propose: type, target folder, tags, title improvement")
-	fmt.Println("  - For files with no body: decide whether to enrich or delete")
-	fmt.Println("  - Suggested target folders: 04-knowledge/, 02-projects/, 06-decisions/")
+	fmt.Println("Suggested next steps:")
+	fmt.Println("  - For each note: propose action (distill|file-only|skip) and target folder")
+	fmt.Println("  - To distill: pkm knowledge append-topic <slug> --title <title> < content.md")
+	fmt.Println("                pkm knowledge update-index <slug> --description <desc>")
+	fmt.Println("  - To file:    pkm note move <filename> <folder>")
+	fmt.Println("  - To log:     pkm knowledge append-log --note <file> --action <action> ...")
+}
+
+func printKnowledgeIndex(v *vault.Vault) {
+	idx, err := LoadIndex(v)
+	if err != nil {
+		return
+	}
+	fmt.Println()
+	fmt.Println("---")
+	fmt.Println()
+	fmt.Println("=== Current 04-knowledge/index.md ===")
+	fmt.Println()
+	if raw := idx.String(); raw != "(empty)" {
+		fmt.Println(raw)
+	} else {
+		fmt.Println("(no topic pages yet)")
+	}
 }
 
 func orDash(s string) string {

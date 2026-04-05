@@ -34,7 +34,7 @@ func newConfigCommand(cfg *config.Config) *cobra.Command {
 			}
 
 			if show {
-				printConfig(cfg, setVaultPath)
+				printConfig(cfg)
 			}
 
 			return nil
@@ -47,18 +47,13 @@ func newConfigCommand(cfg *config.Config) *cobra.Command {
 	return cmd
 }
 
-func printConfig(cfg *config.Config, pendingVaultPath string) {
-	vaultPath := cfg.VaultPath
-	if pendingVaultPath != "" {
-		vaultPath = pendingVaultPath
-	}
-
+func printConfig(cfg *config.Config) {
 	fmt.Printf("Config file:       %s\n", config.ConfigFilePath())
 	fmt.Println()
-	if vaultPath == "" {
+	if cfg.VaultPath == "" {
 		fmt.Println("vault_path:        (not set) — run: pkm config --set-vault-path \"/path/to/vault\"")
 	} else {
-		fmt.Printf("vault_path:        %s\n", vaultPath)
+		fmt.Printf("vault_path:        %s\n", cfg.VaultPath)
 	}
 	fmt.Printf("inbox_path:        %s\n", cfg.InboxPath)
 	fmt.Printf("daily_path:        %s\n", cfg.DailyPath)

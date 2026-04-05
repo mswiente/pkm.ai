@@ -28,6 +28,8 @@ func NewRootCommand(cfg *config.Config) *cobra.Command {
 		newMeetingCommand(cfg),
 		newDecisionCommand(cfg),
 		newNoteCommand(cfg),
+		newKnowledgeCommand(cfg),
+		newProjectCommand(cfg),
 		newConfigCommand(cfg),
 		newSkillCommand(),
 		newSyncCommand(cfg),

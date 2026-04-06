@@ -41,7 +41,7 @@ pkm note move <filename> <folder> [--type] [--status] [--dry-run]
 pkm knowledge append-topic <slug> --title <title> [--dry-run]   # reads content from stdin
 pkm knowledge update-index <slug> --description <desc> [--dry-run]
 pkm knowledge append-log --note <file> --action <action> [--filed-to] [--updated] [--created]
-pkm project update <slug> [--title] [--intent] [--current-status] [--next-steps] [--plan-heading] [--status] [--dry-run]
+pkm project update <slug> [--title] [--intent] [--current-status] [--next-steps] [--plan-heading] [--timeline-entry] [--status] [--dry-run]
 pkm project list
 pkm sync readwise [--dry-run] [--since] [--limit]
 pkm sync readwise auth
@@ -139,6 +139,15 @@ Install with: `pkm skill install`
 |-------|-------------|
 | `/capture-plan` | Capture the current plan as a PKM inbox note |
 | `/distill-inbox` | Process inbox notes using the Karpathy wiki pattern |
+
+## Documentation Maintenance
+
+**README.md and spec.md must always be kept in sync with the implementation.** Whenever a CLI command, flag, section, or behaviour changes:
+
+- Update `README.md` — command usage, flag lists, section descriptions, examples
+- Update `spec.md` — command signatures, template examples, section counts and descriptions
+
+This applies to every PR. Do not consider an implementation change complete until both documents reflect it.
 
 ## Design Principles
 

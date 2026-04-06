@@ -30,4 +30,35 @@ Steps:
    `echo "<created-note-path>" > /tmp/pkm-last-captured-plan.txt`
    Report the created note path to the user.
 
-5. Done.
+5. **Auto-create project if inside a git repo** (new captures only — skip on updates):
+
+   a. Check if we're inside a git repo: `git rev-parse --show-toplevel 2>/dev/null`
+      If that fails, skip to step 6.
+
+   b. Derive a slug from the repo:
+      - Get the remote URL: `git remote get-url origin 2>/dev/null`
+      - Strip `.git` suffix, then take the last path segment (e.g. `pkm.ai` → `pkm-ai`, `my_project` → `my-project`).
+      - Convert underscores and dots to hyphens and lowercase everything.
+      - If no remote, fall back to the basename of the repo root directory.
+
+   c. Check if the project already exists: `pkm project list`
+      Parse the output. If a line contains the derived slug, the project exists — skip to step 6.
+
+   d. Gather repo info to seed the project:
+      - **Title**: use the repo name (last segment of remote URL or directory name, human-readable form).
+      - **Intent**: try these sources in order, stopping at the first non-empty result:
+        1. First non-empty paragraph of `README.md` (run: `head -50 README.md 2>/dev/null`)
+        2. `description` field from `package.json` (`jq -r '.description // empty' package.json 2>/dev/null`)
+        3. `description` field from `pyproject.toml` or `Cargo.toml` if present.
+        4. Fall back to: "Work on the <repo-name> project."
+
+   e. Create the project:
+      ```
+      pkm project update <slug> \
+        --title "<Title>" \
+        --intent "<Intent>" \
+        --status active
+      ```
+      Report the created project to the user.
+
+6. Done.

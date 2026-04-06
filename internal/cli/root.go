@@ -33,6 +33,7 @@ func NewRootCommand(cfg *config.Config) *cobra.Command {
 		newConfigCommand(cfg),
 		newSkillCommand(),
 		newSyncCommand(cfg),
+		newSetupCommand(cfg),
 	)
 
 	return root

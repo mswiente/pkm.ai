@@ -126,7 +126,7 @@ printf '%s\n' '<plan-body>' | pkm project update <slug> \
 pkm note move <filename> archive
 ```
 
-Each project note has: **Intent** (stable goal), **Current Status** (last session), **Next Steps** (checklist), **Plan History** (append-only dated entries).
+Each project note has: **Intent** (stable goal), **Current Status** (last session), **Next Steps** (checklist), **Timeline** (one-line-per-session quick log), **Plan History** (append-only dated entries with wikilinks).
 
 `04-knowledge/index.md` is the topic discovery map — always read it before creating new topic slugs to avoid duplicates.
 `04-knowledge/log.md` is append-only — never modify, only append via `pkm knowledge append-log`.

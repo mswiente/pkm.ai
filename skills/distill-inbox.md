@@ -72,7 +72,7 @@ Everything else. Determine:
 
 [1/N] 2026-04-06-claude-code-pkm-feature.md  (source: claude-code)
   Project: pkm-ai  (EXISTING — last updated 2026-04-05)
-  Heading: 2026-04-06 — Project management feature
+  Heading: 2026-04-06 — Project management feature  ← also becomes Timeline entry
   Intent:  (unchanged)
   Status → "pkm project commands implemented. Distill skill updated."
   Next Steps → "- [ ] Write tests\n- [ ] Update README"
@@ -109,7 +109,7 @@ For each plan note:
    - **Intent**: keep unchanged unless this plan significantly reframes the project goal
    - **Current Status**: synthesise from the plan — what was just built/decided/designed?
    - **Next Steps**: extract from the plan's "Next Steps", "Follow-ups", or "Open Questions" sections; rewrite as a short `- [ ]` checklist
-   - **Plan heading**: `YYYY-MM-DD — <brief session description>`
+   - **Plan heading**: `YYYY-MM-DD — <brief session description>` — this is also used as the Timeline entry automatically; no separate flag needed
 
 5. **If project is new**:
    - Propose an **Intent** (what problem is this solving? what is the end goal?)

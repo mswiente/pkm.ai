@@ -22,6 +22,7 @@ type UpdateOptions struct {
 	NextSteps     string // replaces the ## Next Steps section when non-empty
 	PlanContent   string // appended to ## Plan History with a date-stamped heading
 	PlanHeading   string // heading text for the plan history entry (default: today's date)
+	TimelineEntry string // one-line entry appended to ## Timeline (defaults to PlanHeading when omitted)
 	DryRun        bool
 }
 
@@ -134,6 +135,11 @@ func buildNote(opts UpdateOptions, today string) string {
 	b.WriteString("## Next Steps\n\n")
 	b.WriteString(strings.TrimSpace(nextSteps) + "\n\n")
 
+	timelineEntry := effectiveTimelineEntry(opts.TimelineEntry, opts.PlanHeading)
+	if timelineEntry != "" {
+		b.WriteString("## Timeline\n\n")
+		b.WriteString("- " + timelineEntry + "\n\n")
+	}
 	if opts.PlanContent != "" {
 		b.WriteString("## Plan History\n\n")
 		b.WriteString(planEntry(opts.PlanHeading, opts.PlanContent, today))
@@ -164,6 +170,11 @@ func patchNote(existing string, opts UpdateOptions, today string) (string, []str
 	if opts.NextSteps != "" {
 		existing = replaceSection(existing, "## Next Steps", opts.NextSteps)
 		patched = append(patched, "Next Steps")
+	}
+	timelineEntry := effectiveTimelineEntry(opts.TimelineEntry, opts.PlanHeading)
+	if timelineEntry != "" {
+		existing = appendToTimeline(existing, timelineEntry)
+		patched = append(patched, "Timeline")
 	}
 	if opts.PlanContent != "" {
 		existing = appendToPlanHistory(existing, opts.PlanHeading, opts.PlanContent, today)
@@ -208,6 +219,47 @@ func replaceSection(content, heading, newBody string) string {
 	}
 
 	return content[:bodyStart] + "\n" + strings.TrimSpace(newBody) + "\n\n" + content[bodyEnd:]
+}
+
+// effectiveTimelineEntry returns the text to use as a Timeline bullet.
+// It prefers an explicit TimelineEntry, then falls back to PlanHeading.
+func effectiveTimelineEntry(explicit, planHeading string) string {
+	if strings.TrimSpace(explicit) != "" {
+		return strings.TrimSpace(explicit)
+	}
+	if strings.TrimSpace(planHeading) != "" {
+		return strings.TrimSpace(planHeading)
+	}
+	return ""
+}
+
+// appendToTimeline appends a one-line bullet to the ## Timeline section.
+// Creates the section if absent, inserting it before ## Plan History when possible.
+func appendToTimeline(content, entry string) string {
+	timelineHeading := "\n## Timeline\n"
+	bullet := "- " + entry + "\n"
+
+	if !strings.Contains(content, timelineHeading) {
+		planIdx := strings.Index(content, "\n## Plan History\n")
+		if planIdx >= 0 {
+			return content[:planIdx] + "\n\n## Timeline\n\n" + bullet + content[planIdx:]
+		}
+		if !strings.HasSuffix(content, "\n") {
+			content += "\n"
+		}
+		return content + "\n## Timeline\n\n" + bullet
+	}
+
+	// Section exists — append bullet just before ## Plan History (or at end).
+	planIdx := strings.Index(content, "\n## Plan History\n")
+	if planIdx >= 0 {
+		before := strings.TrimRight(content[:planIdx], "\n")
+		return before + "\n" + bullet + "\n" + content[planIdx:]
+	}
+	if !strings.HasSuffix(content, "\n") {
+		content += "\n"
+	}
+	return content + bullet
 }
 
 // appendToPlanHistory appends a new dated entry to the ## Plan History section.

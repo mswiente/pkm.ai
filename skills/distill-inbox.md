@@ -1,6 +1,6 @@
 ---
 description: Process inbox notes using the Karpathy wiki pattern — distill insights into 04-knowledge/ topic pages, file sources to the right vault folder, and merge captured plans into project notes
-allowed-tools: [Bash]
+allowed-tools: [Bash, WebFetch]
 ---
 
 Process inbox notes using the Karpathy-inspired wiki pattern.
@@ -53,6 +53,14 @@ Everything else. Determine:
 **Topic updates** (for `distill` only, 1–3 per note):
 - **Slug**: use an existing slug from the index if the insight fits; otherwise propose a new `kebab-case` slug
 - **Content to merge**: write **evergreen prose** — extracted insight useful in 6 months. Attribute with `> Source: [[note-slug-without-extension]]`
+
+**Fetch the source article for Readwise/resource notes**: before distilling, use `WebFetch`
+on the `> **Source:** <url>` link in the note body to read the full article. Base the
+distilled insight on the full article, not just Readwise's auto-summary/highlights —
+they're often too thin to distill well. Do NOT save the fetched article text anywhere
+(not in the inbox note, not in the knowledge page) — only the distilled evergreen prose
+gets written to `04-knowledge/`. If the fetch fails (paywall, dead link, non-article
+content), fall back to the existing summary/highlights.
 
 **Topic relationships** (when creating a NEW topic):
 - Scan `04-knowledge/index.md` for existing topics that are a **parent** (broader topic this is a special case of), **child** (narrower topic this generalizes), or close **sibling** of the new topic.

@@ -164,11 +164,11 @@ func AppendToTopicPage(v *vault.Vault, slug, title, contentToMerge string) error
 
 // LogEntry records what happened to one inbox note during a distill run.
 type LogEntry struct {
-	NoteFilename string
-	Action       string
-	FiledTo      string
-	Updated      []string // existing topic slugs updated
-	Created      []string // new topic slugs created
+	NoteFilename string   `json:"note"`
+	Action       string   `json:"action"`
+	FiledTo      string   `json:"filed_to,omitempty"`
+	Updated      []string `json:"updated,omitempty"` // existing topic slugs updated
+	Created      []string `json:"created,omitempty"` // new topic slugs created
 }
 
 // AppendToLog appends a dated batch of log entries to 04-knowledge/log.md.

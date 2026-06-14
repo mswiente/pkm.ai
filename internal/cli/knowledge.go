@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -169,62 +170,97 @@ Example:
 //	[--updated slug1,slug2] [--created slug3]
 func newKnowledgeAppendLogCommand(cfg *config.Config) *cobra.Command {
 	var (
-		noteFile string
-		action   string
-		filedTo  string
-		updated  string
-		created  string
-		dryRun   bool
+		noteFile  string
+		action    string
+		filedTo   string
+		updated   string
+		created   string
+		fromStdin bool
+		dryRun    bool
 	)
 
 	cmd := &cobra.Command{
 		Use:   "append-log",
 		Short: "Append a processing entry to 04-knowledge/log.md",
-		Long: `Records what happened to a note during a distill session.
-Appends to 04-knowledge/log.md (creates it if absent).
+		Long: `Records what happened to one or more notes during a distill session.
+Appends to 04-knowledge/log.md (creates it if absent). All entries from a
+single invocation share one "## <date>" heading.
 
-Example:
+Single-entry example:
   pkm knowledge append-log \
     --note 2026-04-03-readwise-article.md \
     --action "distill + file" \
     --filed-to resources \
     --updated software-engineering-philosophy \
-    --created llm-patterns`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if noteFile == "" {
-				return fmt.Errorf("--note is required")
-			}
-			if action == "" {
-				return fmt.Errorf("--action is required")
-			}
+    --created llm-patterns
 
-			entry := process.LogEntry{
-				NoteFilename: noteFile,
-				Action:       action,
-				FiledTo:      filedTo,
-			}
-			if updated != "" {
-				entry.Updated = splitSlugs(updated)
-			}
-			if created != "" {
-				entry.Created = splitSlugs(created)
+Batch example (one heading for all entries):
+  printf '%s\n' '[
+    {"note": "a.md", "action": "distill + file", "filed_to": "resources", "updated": ["ai-agents"]},
+    {"note": "b.md", "action": "file-only", "filed_to": "resources"},
+    {"note": "c.md", "action": "skip", "filed_to": "archive"}
+  ]' | pkm knowledge append-log --from-stdin`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var entries []process.LogEntry
+
+			if fromStdin {
+				data, err := io.ReadAll(os.Stdin)
+				if err != nil {
+					return fmt.Errorf("read stdin: %w", err)
+				}
+				if err := json.Unmarshal(data, &entries); err != nil {
+					return fmt.Errorf("parse JSON entries from stdin: %w", err)
+				}
+				if len(entries) == 0 {
+					return fmt.Errorf("no entries provided on stdin")
+				}
+				for i, e := range entries {
+					if e.NoteFilename == "" {
+						return fmt.Errorf("entry %d: \"note\" is required", i)
+					}
+					if e.Action == "" {
+						return fmt.Errorf("entry %d: \"action\" is required", i)
+					}
+				}
+			} else {
+				if noteFile == "" {
+					return fmt.Errorf("--note is required")
+				}
+				if action == "" {
+					return fmt.Errorf("--action is required")
+				}
+
+				entry := process.LogEntry{
+					NoteFilename: noteFile,
+					Action:       action,
+					FiledTo:      filedTo,
+				}
+				if updated != "" {
+					entry.Updated = splitSlugs(updated)
+				}
+				if created != "" {
+					entry.Created = splitSlugs(created)
+				}
+				entries = []process.LogEntry{entry}
 			}
 
 			today := time.Now().Format("2006-01-02")
 
 			if dryRun {
 				fmt.Printf("[dry-run] Would append to 04-knowledge/log.md:\n")
-				fmt.Printf("  Date:     %s\n", today)
-				fmt.Printf("  Note:     %s\n", noteFile)
-				fmt.Printf("  Action:   %s\n", action)
-				if filedTo != "" {
-					fmt.Printf("  Filed to: %s/\n", filedTo)
-				}
-				if len(entry.Updated) > 0 {
-					fmt.Printf("  Updated:  %s\n", strings.Join(entry.Updated, ", "))
-				}
-				if len(entry.Created) > 0 {
-					fmt.Printf("  Created:  %s\n", strings.Join(entry.Created, ", "))
+				fmt.Printf("  Date: %s\n", today)
+				for _, e := range entries {
+					fmt.Printf("  - Note:     %s\n", e.NoteFilename)
+					fmt.Printf("    Action:   %s\n", e.Action)
+					if e.FiledTo != "" {
+						fmt.Printf("    Filed to: %s/\n", e.FiledTo)
+					}
+					if len(e.Updated) > 0 {
+						fmt.Printf("    Updated:  %s\n", strings.Join(e.Updated, ", "))
+					}
+					if len(e.Created) > 0 {
+						fmt.Printf("    Created:  %s\n", strings.Join(e.Created, ", "))
+					}
 				}
 				return nil
 			}
@@ -234,21 +270,29 @@ Example:
 				return err
 			}
 
-			if err := process.AppendToLog(v, today, []process.LogEntry{entry}); err != nil {
+			if err := process.AppendToLog(v, today, entries); err != nil {
 				return err
 			}
-			fmt.Printf("Appended entry for %s to 04-knowledge/log.md\n", noteFile)
+			fmt.Printf("Appended %d entr%s to 04-knowledge/log.md\n", len(entries), plural(len(entries)))
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVar(&noteFile, "note", "", "Basename of the processed note (required)")
-	cmd.Flags().StringVar(&action, "action", "", `Action taken, e.g. "distill + file" (required)`)
+	cmd.Flags().StringVar(&noteFile, "note", "", "Basename of the processed note")
+	cmd.Flags().StringVar(&action, "action", "", `Action taken, e.g. "distill + file"`)
 	cmd.Flags().StringVar(&filedTo, "filed-to", "", "Target folder the note was moved to")
 	cmd.Flags().StringVar(&updated, "updated", "", "Comma-separated slugs of updated topic pages")
 	cmd.Flags().StringVar(&created, "created", "", "Comma-separated slugs of newly created topic pages")
+	cmd.Flags().BoolVar(&fromStdin, "from-stdin", false, "Read a JSON array of log entries from stdin, written under one shared date heading")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be written without making changes")
 	return cmd
+}
+
+func plural(n int) string {
+	if n == 1 {
+		return "y"
+	}
+	return "ies"
 }
 
 func splitSlugs(s string) []string {

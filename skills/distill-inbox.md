@@ -54,6 +54,11 @@ Everything else. Determine:
 - **Slug**: use an existing slug from the index if the insight fits; otherwise propose a new `kebab-case` slug
 - **Content to merge**: write **evergreen prose** — extracted insight useful in 6 months. Attribute with `> Source: [[note-slug-without-extension]]`
 
+**Topic relationships** (when creating a NEW topic):
+- Scan `04-knowledge/index.md` for existing topics that are a **parent** (broader topic this is a special case of), **child** (narrower topic this generalizes), or close **sibling** of the new topic.
+- If found, propose a `## Related` entry for the new page, e.g. `- [[parent-slug]] — parent topic: <why>`, and a reciprocal `- [[new-slug]] — <why>` entry to add to the existing page.
+- Only propose this for genuinely useful navigational links (shared subject matter a reader would want to jump between) — not every tangential overlap.
+
 **Per-type guidance:**
 | Type | Target | What to distill |
 |------|--------|-----------------|
@@ -88,6 +93,16 @@ Everything else. Determine:
   Action:  skip → archive
 ```
 
+If any **new topics** are proposed, also list relationship suggestions:
+
+```
+=== Topic Relationships ===
+
+[new] ai-agent-evaluation
+  Related → [[ai-agents]] (parent: general agent patterns)
+  Reciprocal: add "- [[ai-agent-evaluation]] — evaluating agent behavior and outputs" to ai-agents.md
+```
+
 Ask: **"Apply all at once, or step through note by note? (all / step / cancel)"**
 
 ## Step 3A — Plan note routing details
@@ -117,6 +132,22 @@ For each plan note:
 
 ## Step 4 — Apply each approved note
 
+As you process each **regular note**, collect its log entry (note filename, action,
+filed-to folder, updated/created topic slugs) instead of logging it immediately.
+At the end of Step 4, write all collected entries to `04-knowledge/log.md` in a
+**single batched call** so they share one `## <date>` heading:
+
+```bash
+printf '%s\n' '[
+  {"note": "<filename>", "action": "distill + file", "filed_to": "resources", "updated": ["<slug>"], "created": []},
+  {"note": "<filename>", "action": "file-only", "filed_to": "resources"},
+  {"note": "<filename>", "action": "skip", "filed_to": "archive"}
+]' | pkm knowledge append-log --from-stdin
+```
+
+Plan notes (Step 3A) are NOT logged to `04-knowledge/log.md` — they go to
+`02-projects/` Plan History instead.
+
 ### Plan notes
 
 ```bash
@@ -138,22 +169,50 @@ pkm note move <filename> archive
 printf '%s\n' '<content-to-merge>' | pkm knowledge append-topic <slug> --title "<Title>"
 pkm knowledge update-index <slug> --description "<desc>"  # new topics only
 pkm note move <filename> <target-folder>
-pkm knowledge append-log --note <filename> --action "distill + file" \
-  --filed-to <folder> --updated <slugs> --created <slugs>
+```
+Record a log entry: `{"note": "<filename>", "action": "distill + file", "filed_to": "<folder>", "updated": [<slugs>], "created": [<slugs>]}`
+
+### New topics — add Related links
+
+For each approved topic relationship (new topic ↔ existing topic), append a `## Related`
+section to **both** pages. Before appending to an **existing** page, `cat` it first —
+if it already has a `## Related` section, fold the new line into that section manually
+(via a full rewrite with `printf | pkm knowledge append-topic` is append-only, so avoid
+creating a second `## Related` heading; if one exists, skip the automated append and
+note it in the report for manual addition).
+
+```bash
+# New page — safe to append, no existing ## Related section yet
+printf '%s\n' '## Related
+
+- [[<existing-slug>]] — <relationship description>' | pkm knowledge append-topic <new-slug> --title "<Title>"
+
+# Existing page — only if it has no ## Related section yet
+printf '%s\n' '## Related
+
+- [[<new-slug>]] — <relationship description>' | pkm knowledge append-topic <existing-slug> --title "<Title>"
 ```
 
 ### Regular notes — file-only
 
 ```bash
 pkm note move <filename> <target-folder>
-pkm knowledge append-log --note <filename> --action "file-only" --filed-to <folder>
 ```
+Record a log entry: `{"note": "<filename>", "action": "file-only", "filed_to": "<folder>"}`
 
 ### Regular notes — skip
 
 ```bash
 pkm note move <filename> archive
-pkm knowledge append-log --note <filename> --action "skip" --filed-to archive
+```
+Record a log entry: `{"note": "<filename>", "action": "skip", "filed_to": "archive"}`
+
+### After all regular notes are processed
+
+Append all collected entries in one batched call (see Step 4):
+
+```bash
+printf '%s\n' '[...]' | pkm knowledge append-log --from-stdin
 ```
 
 ## Step 5 — Report

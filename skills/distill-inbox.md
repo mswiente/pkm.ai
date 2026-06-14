@@ -124,7 +124,7 @@ For each plan note:
 
 3. **If project exists** — read it with:
    ```bash
-   cat "$(pkm config --show | grep vault_path | awk '{print $2}')/02-projects/<slug>.md"
+   cat "$(pkm config --show | grep vault_path | sed 's/^vault_path: *//')/02-projects/<slug>.md"
    ```
    Understand the current Intent, Status, and Next Steps.
 

@@ -91,3 +91,44 @@ func TestMarshalSimple(t *testing.T) {
 		t.Error("title should appear before type in frontmatter")
 	}
 }
+
+// TestMarshalSimpleRoundTripsSpecialTitles guards against a real bug: titles
+// containing YAML-significant characters (a colon-space, in particular) were
+// written unquoted, which turned "key: value" into a nested YAML mapping and
+// broke Parse for every Readwise article with a colon in its title.
+func TestMarshalSimpleRoundTripsSpecialTitles(t *testing.T) {
+	titles := []string{
+		"GitHub - foo/bar: a tool for doing things",
+		`"The decline of Europe is not inevitable, despite how much...`,
+		"Ends with a colon:",
+		"Has a # hash and a : colon and a , comma",
+		"Plain simple title",
+		"",
+	}
+	for _, title := range titles {
+		n := Note{
+			Title:   title,
+			Type:    "resource",
+			Status:  "inbox",
+			Source:  "readwise",
+			Created: "2026-04-03",
+			Tags:    []string{"readwise"},
+		}
+		out := MarshalSimple(n)
+		got, _, err := Parse(out)
+		if err != nil {
+			t.Fatalf("round-trip Parse failed for title %q: %v\nmarshaled:\n%s", title, err, out)
+		}
+		if got.Title != title {
+			t.Errorf("round-trip Title = %q, want %q", got.Title, title)
+		}
+	}
+}
+
+func TestFormatTagsWithSpecialChars(t *testing.T) {
+	got := FormatTags([]string{"normal", "has: colon", "has, comma"})
+	_, _, err := Parse([]byte("---\ntitle: t\ntype: resource\nstatus: inbox\ncreated: 2026-01-01\ntags: " + got + "\n---\n"))
+	if err != nil {
+		t.Fatalf("tags with special chars broke parsing: %v\ntags: %s", err, got)
+	}
+}

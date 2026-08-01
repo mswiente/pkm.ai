@@ -3,6 +3,7 @@ package frontmatter
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -57,12 +58,55 @@ func Parse(content []byte) (Note, string, error) {
 	return n, body, nil
 }
 
+// yamlScalar returns s formatted as a safe YAML scalar: unquoted when s can be
+// written as a plain scalar without changing meaning, double-quoted (with Go/JSON-style
+// backslash escaping, a valid subset of YAML double-quoted escaping) otherwise. Values
+// written unquoted have historically broken frontmatter parsing when they contained
+// YAML-significant characters (e.g. "GitHub - foo: bar" as a title), since ": " starts
+// a nested mapping. Double-quoting is also safe inside inline flow sequences like tags.
+func yamlScalar(s string) string {
+	if s == "" {
+		return `""`
+	}
+	if needsYAMLQuoting(s) {
+		return strconv.Quote(s)
+	}
+	return s
+}
+
+func needsYAMLQuoting(s string) bool {
+	if strings.TrimSpace(s) != s {
+		return true
+	}
+	switch strings.ToLower(s) {
+	case "true", "false", "null", "~", "yes", "no", "on", "off":
+		return true
+	}
+	if _, err := strconv.ParseFloat(s, 64); err == nil {
+		return true
+	}
+	if strings.ContainsAny(s[:1], ":#{}[],&*!|>'\"%@`-?") {
+		return true
+	}
+	if strings.Contains(s, ": ") || strings.HasSuffix(s, ":") {
+		return true
+	}
+	if strings.ContainsAny(s, "\n\t") {
+		return true
+	}
+	return false
+}
+
 // FormatTags formats a []string as a YAML inline sequence: [tag1, tag2] or [].
 func FormatTags(tags []string) string {
 	if len(tags) == 0 {
 		return "[]"
 	}
-	return "[" + strings.Join(tags, ", ") + "]"
+	quoted := make([]string, len(tags))
+	for i, t := range tags {
+		quoted[i] = yamlScalar(t)
+	}
+	return "[" + strings.Join(quoted, ", ") + "]"
 }
 
 // FormatParticipants formats participants the same way as tags.
@@ -76,31 +120,31 @@ func FormatParticipants(participants []string) string {
 func MarshalSimple(n Note) []byte {
 	var b bytes.Buffer
 	b.WriteString("---\n")
-	b.WriteString(fmt.Sprintf("title: %s\n", n.Title))
-	b.WriteString(fmt.Sprintf("type: %s\n", n.Type))
-	b.WriteString(fmt.Sprintf("status: %s\n", n.Status))
+	b.WriteString(fmt.Sprintf("title: %s\n", yamlScalar(n.Title)))
+	b.WriteString(fmt.Sprintf("type: %s\n", yamlScalar(n.Type)))
+	b.WriteString(fmt.Sprintf("status: %s\n", yamlScalar(n.Status)))
 	if n.Source != "" {
-		b.WriteString(fmt.Sprintf("source: %s\n", n.Source))
+		b.WriteString(fmt.Sprintf("source: %s\n", yamlScalar(n.Source)))
 	}
-	b.WriteString(fmt.Sprintf("created: %s\n", n.Created))
+	b.WriteString(fmt.Sprintf("created: %s\n", yamlScalar(n.Created)))
 	if n.Updated != "" {
-		b.WriteString(fmt.Sprintf("updated: %s\n", n.Updated))
+		b.WriteString(fmt.Sprintf("updated: %s\n", yamlScalar(n.Updated)))
 	}
 	b.WriteString(fmt.Sprintf("tags: %s\n", FormatTags(n.Tags)))
 	if n.TypeHint != "" {
-		b.WriteString(fmt.Sprintf("type_hint: %s\n", n.TypeHint))
+		b.WriteString(fmt.Sprintf("type_hint: %s\n", yamlScalar(n.TypeHint)))
 	}
 	if n.Date != "" {
-		b.WriteString(fmt.Sprintf("date: %s\n", n.Date))
+		b.WriteString(fmt.Sprintf("date: %s\n", yamlScalar(n.Date)))
 	}
 	if len(n.Participants) > 0 {
 		b.WriteString(fmt.Sprintf("participants: %s\n", FormatParticipants(n.Participants)))
 	}
 	if n.Project != "" {
-		b.WriteString(fmt.Sprintf("project: %s\n", n.Project))
+		b.WriteString(fmt.Sprintf("project: %s\n", yamlScalar(n.Project)))
 	}
 	if n.DecisionDate != "" {
-		b.WriteString(fmt.Sprintf("decision_date: %s\n", n.DecisionDate))
+		b.WriteString(fmt.Sprintf("decision_date: %s\n", yamlScalar(n.DecisionDate)))
 	}
 	if len(n.RelatedNotes) > 0 {
 		b.WriteString(fmt.Sprintf("related_notes: %s\n", FormatTags(n.RelatedNotes)))

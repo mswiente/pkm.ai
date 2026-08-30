@@ -296,7 +296,7 @@ pkm note move <filename> <folder> [--type] [--status] [--dry-run]
 pkm knowledge append-topic <slug> --title <title> [--dry-run]
 pkm knowledge update-index <slug> --description <desc> [--dry-run]
 pkm knowledge append-log --note <file> --action <action> [--filed-to] [--updated] [--created]
-pkm project update <slug> [--title] [--intent] [--current-status] [--next-steps] [--plan-heading] [--status] [--dry-run]
+pkm project update <slug> [--title] [--intent] [--current-status] [--next-steps] [--plan-heading] [--timeline-entry] [--status] [--dry-run]
 pkm project list
 pkm sync readwise [--dry-run] [--since] [--limit]
 pkm sync readwise auth
@@ -795,10 +795,11 @@ Anwendung: `pkm process inbox --full` + Claude Code (`/distill-inbox` Skill).
 
 Plan-Notizen aus Claude Code Sessions (`source: claude-code` + `# Plan:` Heading) werden nicht destilliert, sondern an `02-projects/<slug>.md` weitergeleitet.
 
-Jede Projekt-Notiz hat vier Abschnitte:
+Jede Projekt-Notiz hat fünf Abschnitte:
 - **Intent** — dauerhaftes Ziel (stabil)
 - **Current Status** — was zuletzt erarbeitet wurde (wird pro Session aktualisiert)
 - **Next Steps** — was als nächstes zu tun ist (wird pro Session aktualisiert)
+- **Timeline** — einzeiliges Schnellprotokoll pro Session (append-only)
 - **Plan History** — datumgestempelte Einträge mit Wikilinks zu archivierten Plan-Notizen (append-only)
 
 Anwendung: `pkm project update <slug>` + `pkm project list`.
@@ -1312,6 +1313,10 @@ Was zuletzt erarbeitet wurde (wird pro Session aktualisiert).
 - [ ] Nächste Aktion
 - [ ] Weitere Aktion
 
+## Timeline
+
+- YYYY-MM-DD — Kurzbeschreibung der Session
+
 ## Plan History
 
 ### YYYY-MM-DD — Session-Beschreibung
@@ -1319,10 +1324,11 @@ Was zuletzt erarbeitet wurde (wird pro Session aktualisiert).
 [[YYYY-MM-DD-HHMM-claude-code-plan-notiz]]
 ```
 
-Die vier Abschnitte:
+Die fünf Abschnitte:
 - **Intent** — dauerhaftes Projektziel
 - **Current Status** — Zustand nach der letzten Session
 - **Next Steps** — Checkliste für die nächste Session
+- **Timeline** — einzeiliges Schnellprotokoll pro Session (append-only)
 - **Plan History** — append-only Verlauf mit Wikilinks zu archivierten Plan-Notizen
 
 ## 12.8 Resource Note Template
@@ -1385,7 +1391,7 @@ Der MVP ist vollständig umgesetzt. Stand 2026-04:
 * `pkm capture` — schnelles Erfassen in `00-inbox/`
 * `pkm process inbox --full` — Kontext-Ausgabe für Claude Code Distillation Sessions
 * `pkm knowledge` — Karpathy-Wiki-Distillation: append-topic, update-index, append-log
-* `pkm project` — Projektverfolgung mit Intent / Status / Next Steps / Plan History
+* `pkm project` — Projektverfolgung mit Intent / Status / Next Steps / Timeline / Plan History
 * `pkm note move` — Verschieben mit automatischer Frontmatter-Aktualisierung
 * `pkm daily / meeting / decision create` — strukturierte Notizen aus Templates
 * `pkm sync readwise` — inkrementeller Readwise Reader Sync mit Highlights

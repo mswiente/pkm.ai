@@ -166,12 +166,13 @@ pkm knowledge append-log \
 
 ### `pkm project`
 
-Manage project context notes in `02-projects/`. Each project note has four sections:
+Manage project context notes in `02-projects/`. Each project note has five sections:
 
 - **Intent** — what the project is trying to achieve (stable)
 - **Current Status** — what was last worked on (updated each session)
 - **Next Steps** — what to do next (updated each session)
-- **Plan History** — dated log of captured plans (append-only)
+- **Timeline** — one-line-per-session quick log (append-only)
+- **Plan History** — dated log of captured plans with wikilinks (append-only)
 
 #### `pkm project update`
 
@@ -195,7 +196,7 @@ cat plan.md | pkm project update pkm-ai \
 pkm project update pkm-ai --current-status "..." --dry-run
 ```
 
-**Flags:** `--title`, `--intent`, `--current-status`, `--next-steps`, `--plan-heading`, `--status` (`active`|`on-hold`|`archived`), `--dry-run`
+**Flags:** `--title`, `--intent`, `--current-status`, `--next-steps`, `--plan-heading`, `--timeline-entry`, `--status` (`active`|`on-hold`|`archived`), `--dry-run`
 
 #### `pkm project list`
 

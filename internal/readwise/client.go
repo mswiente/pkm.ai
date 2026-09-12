@@ -13,9 +13,11 @@ import (
 )
 
 const (
-	baseURLV3 = "https://readwise.io/api/v3"
 	baseURLV2 = "https://readwise.io/api/v2"
 )
+
+// baseURLV3 is a var (not const) so tests can point it at an httptest server.
+var baseURLV3 = "https://readwise.io/api/v3"
 
 // Client is an HTTP client for the Readwise Reader API.
 type Client struct {
@@ -113,9 +115,10 @@ func (c *Client) ValidateToken(ctx context.Context) error {
 	return nil
 }
 
-// ListAll fetches all documents updated after the given time (nil = all).
+// ListAll fetches documents updated after the given time (nil = all), optionally
+// restricted to a single Reader location (e.g. "new" for the inbox; "" = any location).
 // Paginates automatically and retries on 429 using the Retry-After header.
-func (c *Client) ListAll(ctx context.Context, updatedAfter *time.Time) ([]Document, error) {
+func (c *Client) ListAll(ctx context.Context, updatedAfter *time.Time, location string) ([]Document, error) {
 	var all []Document
 	var cursor *string
 
@@ -123,6 +126,9 @@ func (c *Client) ListAll(ctx context.Context, updatedAfter *time.Time) ([]Docume
 		params := url.Values{}
 		if updatedAfter != nil {
 			params.Set("updatedAfter", updatedAfter.UTC().Format(time.RFC3339))
+		}
+		if location != "" {
+			params.Set("location", location)
 		}
 		if cursor != nil {
 			params.Set("pageCursor", *cursor)

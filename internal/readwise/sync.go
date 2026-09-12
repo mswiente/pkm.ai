@@ -52,7 +52,7 @@ func Run(v *vault.Vault, cfg *config.Config, opts Options) (Result, error) {
 	syncedAt := time.Now().UTC()
 
 	client := NewClient(token)
-	docs, err := client.ListAll(context.Background(), updatedAfter)
+	docs, err := client.ListAll(context.Background(), updatedAfter, "new")
 	if err != nil {
 		return Result{}, fmt.Errorf("fetch documents: %w", err)
 	}

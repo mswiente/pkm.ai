@@ -4,6 +4,14 @@ A lightweight CLI for a markdown-first personal knowledge management system buil
 
 The core idea: **capture fast, curate later**. Every note lands in `00-inbox/` first. You decide where it goes.
 
+## Architecture roadmap
+
+The planned GitHub + Markdown + MCP architecture is specified in German in
+[spec.md, section 18](spec.md#18-geplant-github-markdown-und-mcp).
+Readwise Reader remains the source layer; the PKM becomes a curated knowledge layer.
+This is a planned successor architecture, not implemented functionality. The CLI
+and vault workflows documented below remain the current implementation.
+
 ## Installation
 
 ```bash

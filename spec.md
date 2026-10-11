@@ -1,5 +1,11 @@
 # AI-basiertes Personal Knowledge System
 
+> **Stand 2026-10-11:** Die Abschnitte 1–17 beschreiben den bisherigen
+> CLI-/Obsidian-Ansatz einschließlich seiner damaligen Ausbauideen. Der neue,
+> noch nicht implementierte Zielstand steht in [Abschnitt 18: Geplant](#18-geplant-github-markdown-und-mcp).
+> Für die Neuentwicklung hat Abschnitt 18 bei Abweichungen Vorrang; die bestehende
+> CLI bleibt bis zur ausdrücklich durchgeführten Migration unverändert.
+
 ## 1. Zielbild
 
 Wir bauen ein persönliches Knowledge System auf Basis von **Obsidian** als Wissensoberfläche und **Claude Code** als AI-gestütztem Arbeitswerkzeug.
@@ -1440,3 +1446,380 @@ MVP ist abgeschlossen. Nächste Ausbaustufen:
 5. Automatische Tag-Vergabe beim Capture oder Inbox-Processing
 6. Retrieval-gestützte Workflows (lokale Suche, Embeddings)
 
+
+## 18. Geplant: GitHub, Markdown und MCP
+
+**Status:** Entwurf / noch nicht implementiert. **Erstellt und aktualisiert:** 2026-10-11.
+Grundlage ist die Unterhaltung „Daily AI Tech Brief“ vom 2026-10-11 zum
+Reader→PKM-Workflow und zur Vereinheitlichung mit Live Journal und Training Journal.
+Dieser Abschnitt spezifiziert das Zielverhalten; er behauptet keine vorhandenen MCP-Funktionen.
+
+### 18.1 Ziel, Zuständigkeiten und Abgrenzung
+
+Das PKM wird ein langlebiger **Knowledge Layer** für eigene, verdichtete und
+wiederverwendbare Erkenntnisse. **Readwise Reader bleibt der Source Layer** für
+Leseliste, Originalmaterial, Lesestatus, Highlights und artikelbezogene Notizen.
+Ein archivierter Reader-Artikel ist weiterhin eine auffindbare Quelle; Archivierung
+ist weder Löschung noch ein Signal für automatische Übernahme ins PKM.
+
+| System | Primäre Struktur | Verantwortlich für |
+|---|---|---|
+| Readwise Reader | Dokument und Leseprozess | Sammeln, Lesen, Markieren, Archivieren |
+| Live Journal | Zeit und Ereignisse | Persönlicher Verlauf und Reflexion |
+| Training Journal | Trainingseinheit und Zeit | Trainingsverlauf, Beobachtungen und Auswertung |
+| PKM | Aussage, Konzept und Verknüpfung | Übertragbare Erkenntnisse, Belege, Anwendung und Themenübersichten |
+| Projekt-Repository | Projekt und Entscheidung | Specs, ADRs, Aufgaben und projektspezifischer Arbeitsstand |
+
+GitHub + Markdown + MCP ist das gemeinsame Persistenz- und Zugriffsmuster, kein
+Grund für ein gemeinsames Datenschema oder Repository aller Journale. Eine
+Journalbeobachtung darf eine PKM-Erkenntnis begründen und wird dann verlinkt.
+Tagesverlauf, Trainingsprotokolle und Projektpläne werden nicht vollständig ins PKM
+kopiert. Eine Erkenntnis kann ohne externe Quelle aus eigener Erfahrung entstehen;
+ihr Erfahrungskontext muss dann benannt sein.
+
+Nicht Bestandteil der ersten Version sind autonome Wissenspflege, vollständiger
+Reader-Import, bidirektionale Reader-Synchronisierung, Journalfunktionen,
+Aufgabenverwaltung, Vektordatenbank oder ein eigener RAG-Stack.
+
+### 18.2 Anforderungen
+
+- **R1 – Persistenz:** Versionierte Markdown-Dateien mit YAML-Frontmatter in einem
+  privaten GitHub-Wissensrepository sind die Source of Truth. Indizes und Caches
+  müssen daraus vollständig rekonstruierbar sein.
+- **R2 – Zugriff:** MCP ist die primäre API auf das Wissen. Clients können suchen,
+  lesen, erfassen, erstellen, aktualisieren und verknüpfen. Lesen und manuelles
+  Bearbeiten mit einem beliebigen Markdown-Editor bleiben möglich.
+- **R3 – Kuratierung:** Nur bewusst ausgewählte Quellen und wiederverwendbare
+  Erkenntnisse werden übernommen. Capture und fachliche Freigabe sind getrennt.
+- **R4 – Nachvollziehbarkeit:** Aussagen, Quellenzitate und eigene Interpretation
+  bleiben unterscheidbar. Herkunft, interne Verweise und Git-Version sind abrufbar.
+- **R5 – Integrität:** Validierung, stabile IDs, idempotente Wiederholungen und
+  Konflikterkennung verhindern Duplikate, ungültige Links und verlorene Änderungen.
+- **R6 – Gemeinsamer Kern:** MCP und eine gegebenenfalls weitergeführte CLI verwenden
+  dieselben Regeln für Storage, Validierung, Suche und Linking.
+- **R7 – Migration:** Bestehende Notizen und ihre Herkunft bleiben erhalten. Ein
+  Schema- oder Strukturwechsel erfolgt mit Vorschau, Prüfung und Rückweg.
+
+### 18.3 Architektur und Repository-Struktur
+
+```text
+Readwise Reader / eigene Gedanken / ausgewählte Journalbeobachtungen
+                       ↓ bewusste Auswahl und Verdichtung
+ChatGPT / Coding Agents / optionale CLI
+                       ↓ MCP
+                    pkm-mcp
+                       ↓ gemeinsamer pkm-core
+              privates GitHub-Wissensrepo
+                       ↓
+              Markdown + YAML-Frontmatter
+```
+
+`pkm.ai` ist heute das **Software-Repository der Go-CLI**, nicht der Wissensspeicher.
+Diese Spec bleibt hier. Der geplante Wissensspeicher ist ein separates privates
+Repository, Arbeitsname `pkm`. Ein separates Software-Repository `pkm-mcp` ist
+vorgesehen; endgültige Namen, Deployment und die physische Paketaufteilung des
+`pkm-core` werden vor der Implementierung festgelegt. Diese Spezifikation erstellt
+weder Repositories noch einen MCP-Dienst und verschiebt keine bestehenden Daten.
+
+Geplante Struktur des Wissensrepositorys:
+
+```text
+README.md                 # Zweck, Schema, Arbeitsweise und Einstiegspunkte
+inbox/                    # noch zu prüfende Notizen aller drei Typen
+notes/                    # kuratierte insight-Notizen
+sources/                  # ausgewählte source-Notizen
+topics/                   # kuratierte Themenübersichten
+templates/
+  insight.md
+  source.md
+  topic.md
+```
+
+Die Ordner bleiben zunächst flach. Fachliche Zuordnung erfolgt über Topics und
+Links; zusätzliche Domänenordner werden erst bei tatsächlichem Bedarf eingeführt.
+Jede Datei heißt `<id>-<english-ascii-kebab-slug>.md`. Die unveränderliche ID ist eine
+UUID; Titel, Slug und Pfad dürfen sich ändern. `inbox/` ist eine Bearbeitungsstufe,
+kein vierter Note-Typ. Freigegebene Notizen wechseln in den typabhängigen Zielordner.
+Archivierte Notizen bleiben dort auffindbar und erhalten `status: archived`.
+
+Obsidian ist optionaler Editor und Browser. Das Schema und die Nutzung über MCP
+setzen weder Obsidian noch dessen Plugins voraus.
+
+### 18.4 Datenmodell und Frontmatter
+
+| Typ | Inhalt | Empfohlene Abschnitte |
+|---|---|---|
+| `insight` | Eine eigenständig verständliche Aussage oder ein Prinzip | These, Kontext/Geltungsbereich, Belege, Konsequenzen/Anwendung, Grenzen/offene Fragen |
+| `source` | Schlanker Nachweis einer bewusst ausgewählten Quelle | Quelle, Relevanz, ausgewählte Highlights, eigene Gedanken |
+| `topic` | Kuratierter Einstieg in ein Thema mit Links zu Insights | Überblick, Leitfragen, Erkenntnisse, Widersprüche/offene Fragen |
+
+Topics ersetzen keine einzelnen Insights. Eine Source ist kein Artikelarchiv;
+nur relevante Auszüge und Kontext werden gespeichert. Ein Insight kann mehrere
+Sources nutzen, eine Source mehrere Insights belegen. Themen sind ebenfalls
+Notizen mit stabilen IDs und können mehrere Insights bündeln.
+
+Gemeinsame Pflichtfelder:
+
+| Feld | Typ und Bedeutung |
+|---|---|
+| `schema_version` | Integer, anfangs `1`; unbekannte Versionen nicht schreibend verarbeiten |
+| `id` | Eindeutige, unveränderliche UUID |
+| `title` | Nicht leerer String |
+| `type` | `insight`, `source` oder `topic` |
+| `status` | `inbox`, `draft`, `active` oder `archived` |
+| `created`, `updated` | Datum `YYYY-MM-DD`; `created` unveränderlich, `updated` bei inhaltlicher Änderung |
+| `origin` | `manual`, `readwise`, `chat`, `journal` oder `migration` |
+| `topics` | Liste von IDs existierender `topic`-Notizen; leer zulässig |
+| `sources` | Liste von IDs existierender `source`-Notizen; leer bei eigener Erkenntnis zulässig |
+| `related` | Liste anderer vorhandener Note-IDs; leer zulässig |
+| `tags` | Freie Schlagwörter; Liste, leer zulässig |
+
+Source-spezifisch: `url` ist der dauerhafte Herkunftslink; bei nicht webbasierten
+Quellen ist stattdessen `citation` als bibliografischer Nachweis erforderlich.
+Optional sind `author`, `published`, `reader_document_id` und `reader_url`.
+Reader-Captures speichern die Dokument-ID und den Reader-Link, soweit verfügbar,
+sowie die Original-URL. Unbekannte Metadaten werden weggelassen, nicht erfunden.
+`origin` beschreibt den Erfassungsweg; `sources` verweist auf Belege.
+
+Optionale `legacy_path`- und `legacy_type`-Felder unterstützen die Migration.
+Erweiterungsfelder bleiben beim Aktualisieren erhalten. Das alte skalare Feld
+`source: readwise` wird bei der Migration zu `origin: readwise`, nicht zu `sources`.
+
+Beispiel einer noch unbelegten eigenen These, bewusst als Entwurf markiert:
+
+```yaml
+---
+schema_version: 1
+id: "9d7b83c8-57e3-4aac-b180-81557d017544"
+title: "Agent-Infrastruktur als Plattformfunktion"
+type: insight
+status: inbox
+created: "2026-10-11"
+updated: "2026-10-11"
+origin: manual
+topics: []
+sources: []
+related: []
+tags: [ai-agents, platform-engineering]
+---
+```
+
+Der Body formuliert etwa die zu prüfende These, dass Identity, Gateways und Policy
+als Plattformdienste konsumiert werden können, und beschreibt Einsatzgrenzen.
+Vor Aktivierung werden belastbare Belege oder der eigene Erfahrungskontext ergänzt.
+Eine Produktankündigung allein ist noch kein allgemeingültiger Architekturbeleg.
+
+Lebenszyklus: Capture erzeugt `inbox`; die Bearbeitung kann zu `draft` wechseln.
+Fachliche Prüfung und bewusste Freigabe führen zu `active`. `archived` kennzeichnet
+nicht mehr gepflegte Inhalte; Reaktivierung ist möglich. Eine neu erzeugte
+AI-Synthese wird nicht automatisch aktiv. Der Status wird nicht aus dem Ordnernamen
+oder dem Reader-Lesestatus abgeleitet. `inbox` liegt in `inbox/`, die übrigen Status
+liegen im jeweiligen Typordner; Statuswechsel und Verschieben sind atomar.
+
+Metadaten enthalten ID-Verweise als verbindliche Beziehungen. Im Body werden
+zusätzlich relative Markdown-Links mit lesbaren Titeln verwendet, die auf GitHub
+und lokal funktionieren. Pfadänderungen müssen betroffene interne Links mitführen;
+IDs bleiben stabil. Backlinks werden aus den ausgehenden Beziehungen abgeleitet,
+nicht als zweite manuell zu pflegende Wahrheit gespeichert.
+
+### 18.5 Reader→PKM-Workflow
+
+1. **Lesen:** Links landen in Reader. Beim Lesen werden wenige relevante Stellen
+   markiert und eigene Gedanken ergänzt. Die meisten Artikel gehen anschließend
+   ausschließlich ins Reader-Archiv.
+2. **Auswählen:** Ein PKM-Kandidat enthält etwas, das später für Entscheidungen,
+   Präsentationen, Projekte oder eigenes Verständnis wiederverwendbar ist.
+   „Interessant“ oder „neu veröffentlicht“ allein reicht nicht.
+3. **Abgleichen:** Vor Neuanlage nach vorhandenen Sources, Insights und Topics
+   suchen. Ähnliche Aussagen bevorzugt ergänzen, Gegenbelege sichtbar aufnehmen.
+4. **Quelle erfassen:** `capture_source` übernimmt Original-Link, Reader-Referenz,
+   ausgewählte Highlights und eigene Notizen als schlanke Source in die Inbox.
+   Zitate werden mit Herkunft kenntlich gemacht; eigene Gedanken stehen getrennt.
+5. **Verdichten:** Aus einer oder mehreren Quellen eine selbstständige These mit
+   Geltungsbereich, Belegen und Konsequenzen formulieren oder einen bestehenden
+   Insight aktualisieren. Mehrere Artikel dürfen eine gemeinsame Erkenntnis ergeben.
+6. **Prüfen und verknüpfen:** Entwurf lesen, Aussagen gegen Quellen prüfen, passende
+   Topics und verwandte Notes verlinken. Die bestätigte Fassung aktivieren.
+7. **Abschließen:** Erfolgreiche Speicherung liefert Note-IDs und Git-Revision.
+   Reader-Archivierung bleibt ein unabhängiger Leseschritt und wird vom PKM nicht
+   automatisch ausgelöst. Ein bereits archivierter Artikel kann später noch
+   bewusst als Quelle erfasst werden.
+
+Es gibt in Version 1 keinen automatischen Import der Reader-Inbox und keinen
+Import allein aufgrund eines Highlights. Die Reader-Auswahl kann über den
+bestehenden Reader-Zugang des Clients erfolgen; `pkm-mcp` muss zum Capture nicht
+selbst auf Reader zugreifen. Ein fehlender Reader-Zugriff blockiert das Erfassen
+bekannter URLs und ausdrücklich übergebener Auszüge nicht.
+
+### 18.6 MCP-Funktionen und Verhaltensvertrag
+
+Die folgenden Namen beschreiben den geplanten Tool-Vertrag, keine bereits
+verfügbare Schnittstelle. Generative Verdichtung erfolgt zunächst im aufrufenden
+AI-Client; der MCP validiert und persistiert die übergebenen Inhalte.
+
+| Tool | Wesentliche Eingaben | Ergebnis und Verhalten |
+|---|---|---|
+| `search_notes` | `query`, Filter für Typ/Status/Topic/Tags, `limit`, `cursor` | Volltextsuche über Titel, Body und Metadaten; Treffer mit ID, Titel, Pfad, Auszug, Status und Revision; paginiert, archivierte Notes nur auf Wunsch |
+| `get_note` | `id` oder relativer `path` | Vollständiges Frontmatter und Markdown, aufgelöste Beziehungen und Revision; eindeutiger Fehler bei fehlender Note |
+| `list_topics` | optional Suchtext, `limit`, `cursor` | Vorhandene Topics mit ID, Titel und Kurzbeschreibung zur Wiederverwendung |
+| `create_note` | Typ, Titel, Inhalt, Metadaten, `request_id`, `dry_run` | Validierte neue Note mit generierter ID, initial `inbox`; keine stille Überschreibung |
+| `update_note` | ID, explizite Änderungen an Body/Metadaten, `expected_revision`, `request_id`, `dry_run` | Nur angegebene Inhalte ändern; unbekannte Metadaten erhalten; Statuswechsel validieren |
+| `link_notes` | Ausgangs-ID, Ziel-ID, Beziehung `related`/`sources`/`topics`, Aktion `add`/`remove`, `expected_revision`, `request_id`, `dry_run` | Typgerechte Beziehung ohne Duplikate; fehlende Ziele und Selbstverweise ablehnen |
+| `capture_source` | URL oder bibliografischer Nachweis, Titel, optionale Reader-ID/-URL, ausgewählte Highlights und eigene Notizen, `request_id`, `dry_run` | Source anlegen oder vorhandene Source zurückgeben; bei geändertem Material Vorschau und konfliktgeprüftes Update statt blindem Überschreiben |
+| `create_insight_from_sources` | Source-IDs, vom Client formulierter Entwurf, Titel, Topics, `request_id`, `dry_run` | Quellen prüfen und einen verknüpften Insight als `inbox` erstellen; keine erfundenen Belege oder automatische Aktivierung |
+
+Alle Schreibtools unterstützen eine Vorschau (`dry_run`) ohne Dateischreibvorgang,
+Commit oder Push. Bereits erteilte, konkrete Schreibaufträge dürfen direkt
+umgesetzt werden; zusätzliche AI-Vorschläge zur Umstrukturierung müssen zuvor
+prüfbar sein. Die bestehende CLI-Regel zur Bestätigung bei Inbox-Verarbeitung
+bleibt bis zu ihrer ausdrücklich implementierten Ablösung bestehen.
+
+`expected_revision` bezeichnet den vom letzten Lesezugriff bekannten Repository-
+Commit. Stimmt dieser nicht mehr mit dem aktuellen Stand überein, erfolgt ein
+Konfliktfehler ohne Schreibvorgang. Der Client liest neu und überprüft seinen Diff.
+Ein konservativer Konflikt bei Änderungen an anderen Dateien ist in Version 1 zulässig.
+
+Erfolgreiche Schreibantworten enthalten ID, Pfad, Änderungszusammenfassung und
+Commit-SHA; No-ops werden ausdrücklich ausgewiesen. Fehler unterscheiden mindestens
+Validierungsfehler, unbekannte ID, Konflikt, fehlende Berechtigung und Storage-/Sync-
+Fehler. Fehlgeschlagene Operationen erzeugen keine teilweise aktive Note.
+
+`request_id` identifiziert eine logische Mutation: gleiche ID und gleiche Nutzlast
+liefern beim Retry dasselbe Ergebnis, eine andere Nutzlast unter derselben ID einen
+Konflikt. Der Idempotenznachweis muss auch nach Neustart rekonstruierbar sein, etwa
+aus Commit-Metadaten; ein flüchtiger Cache allein reicht nicht.
+
+Source-Deduplizierung verwendet zuerst eine vorhandene Reader-Dokument-ID, sonst
+die konservativ normalisierte Original-URL. Nur bekannte Tracking-Parameter werden
+entfernt; inhaltlich relevante URL-Bestandteile bleiben erhalten. Bibliografische
+Quellen ohne URL werden bei unklarer Identität zur manuellen Prüfung vorgeschlagen.
+Gleiche Titel allein begründen keine Zusammenführung. Bereits kuratierte eigene
+Gedanken und Highlights werden bei erneutem Capture niemals still ersetzt.
+
+Die Suche startet mit nachvollziehbarer lexikalischer Suche. Ein Index ist ein
+abgeleiteter Cache und an einen Commit gebunden. Nach erfolgreicher Mutation muss
+die anschließende Suche diesen Stand sehen; veraltete Indizes werden aktualisiert
+oder die Dateien direkt gelesen. Ein Suchtreffer darf nicht als vollständiger
+Kontext für eine Überschreibung verwendet werden.
+
+### 18.7 Versionierung, Git-Workflow und Zugriff
+
+- Das private Wissensrepository ist die kanonische Historie. Der MCP arbeitet auf
+  einem konfigurierten Branch; Standard ist der Default-Branch. GitHub-API oder
+  lokaler Clone sind mögliche Adapter mit demselben Konsistenzvertrag.
+- Vor dem Schreiben wird der aktuelle Remote-Stand gelesen. Validierung und Diff
+  gehen dem Commit voraus. Eine fachlich zusammengehörige Operation einschließlich
+  Link- und Pfadkorrekturen erzeugt genau einen atomaren Commit.
+- Der Commit nennt Aktion und betroffene Note-IDs; Request-ID und Client-Herkunft
+  ermöglichen Zuordnung. Die konfigurierte Git-Identität wird verwendet, keine
+  erfundene Autorenidentität. Fachliche Provenienz steht in den Notes.
+- Remote-Aktualisierung erfolgt nur auf Basis der erwarteten Revision. Keine
+  Force-Pushes, kein stilles Last-write-wins. Bei Push-Fehlern wird lokale Speicherung
+  nicht als erfolgreicher GitHub-Abschluss ausgegeben; Retry prüft, ob die Operation
+  möglicherweise bereits angekommen ist.
+- Explizite einzelne Capture-/Pflegeaufträge können direkt auf dem Arbeitsbranch
+  landen. Massenmigration und größere Umstrukturierung erfolgen in einem separaten
+  Branch mit geprüftem Diff und Pull Request vor Übernahme in den Default-Branch.
+- Direkte manuelle Markdown-Edits bleiben erlaubt und müssen dieselben Schema- und
+  Linkprüfungen bestehen. Fremde uncommittete Änderungen werden nicht mitcommittet
+  oder überschrieben. Der MCP benötigt dafür einen isolierten Arbeitsbereich.
+- Rücknahmen erfolgen per Revert, ohne Historie umzuschreiben. Archivieren wird
+  Löschen vorgezogen; ein Löschtool gehört nicht zur ersten Version.
+- GitHub-Zugangsdaten liegen außerhalb des Wissensrepositorys. Zugriff ist auf das
+  konfigurierte Repo beschränkt; Pfade außerhalb der erlaubten Notizbereiche,
+  Path Traversal und Symlink-Ausbrüche werden abgelehnt. Lesen und Schreiben
+  benötigen entsprechend begrenzte Berechtigungen.
+- Quellen und Notizinhalte sind Daten, keine Ausführungsanweisungen. Capture führt
+  weder enthaltene Befehle aus noch folgt es automatisch beliebigen Links.
+
+### 18.8 Bestehende CLI und Übergang
+
+Die CLI wird nicht sofort entfernt. Wiederverwendbare Logik wird in einen gemeinsamen
+Kern für Storage, Validierung, Indexierung und Linking überführt. `pkm-mcp` nutzt
+diesen Kern; eine weitergeführte CLI verwendet denselben Kern oder wird MCP-Client.
+Es entstehen keine unabhängig gepflegten Geschäftsregeln pro Zugang.
+
+Die aktuelle CLI erwartet nummerierte Vault-Ordner und andere Note-Typen. Ihr
+Frontmatter-Modell unterstützt die neuen Felder noch nicht vollständig. Sie darf
+daher nicht ungeprüft auf den neuen Wissensspeicher schreiben: Alte Befehle könnten
+Typen umdeuten oder Metadaten verlieren. Bis zur Anpassung bleibt der alte Vault
+getrennt und die bestehende CLI dort unverändert nutzbar.
+
+| Bisher | Geplanter Umgang |
+|---|---|
+| `00-inbox/` | Bewusst ausgewählte Inhalte als typisierte Inbox-Entwürfe übernehmen |
+| `04-knowledge/<slug>.md` | Inhalt prüfen: einzelne Aussagen als `insight`, Themenübersichten als `topic`; keine pauschale Umbenennung |
+| `04-knowledge/index.md` | Als Ausgangspunkt für Topics und deren Verknüpfungen verwenden |
+| `04-knowledge/log.md` | Alten Audit-Trail unverändert bewahren; neue Änderungen sind über Git nachvollziehbar |
+| `05-resources/` | Nur weiterhin relevante Quellen als schlanke `source` übernehmen; Herkunft und eigene Gedanken erhalten |
+| `01-daily/`, Meetings, Training | Im bisherigen Bestand bewahren; Journalzuständigkeit getrennt klären; nur Erkenntnisse ins PKM extrahieren |
+| Projekte, Areas, Decisions | Bestehenden Kontext bewahren; Projekt-Specs/ADRs bleiben im Projekt, nur übertragbares Wissen ins PKM |
+| `07-templates/` | Nach Schemafreigabe drei neue Templates ergänzen bzw. ersetzen |
+| `09-archive/`, Attachments | Kein pauschaler Import oder Löschen; relevante Verweise vor Migration prüfen |
+| `pkm sync readwise` | Bestehenden Inbox-Sync zunächst unverändert lassen; im neuen Workflow durch explizites Source-Capture ersetzen |
+
+Migration: Bestand und Links inventarisieren, Ausgangsrevision sichern, eine
+repräsentative kleine Auswahl als Vorschau konvertieren, Zuordnung alter Pfade zu
+neuen IDs dokumentieren, Metadaten und Links validieren, danach schrittweise per
+Review übernehmen. Der alte Vault bleibt bis zur geprüften Vollständigkeit erhalten;
+kein gleichzeitiger Schreibbetrieb alter CLI und neuer API auf denselben Dateien.
+
+Die CLI kann entfallen, wenn Capture, Suche, Lesen, Pflege und Source-Übernahme über
+MCP im Alltag funktionieren und keine benötigten lokalen oder Offline-Abläufe mehr
+von ihr abhängen. Andernfalls bleibt sie ein schlanker optionaler Zugang. Entfernung,
+Kompatibilitätsdauer und Ersatz bestehender Skripte sind eine spätere ausdrückliche
+Entscheidung, kein Bestandteil dieser Spezifikationsänderung.
+
+### 18.9 Akzeptanzkriterien für die Implementierung
+
+1. **R1/R2:** Ein frischer Clone enthält alle für Lesen und Wiederherstellung nötigen
+   Notes und Metadaten. Nach Löschen sämtlicher Suchcaches lässt sich die Suche aus
+   Markdown neu aufbauen; kein Obsidian-Plugin ist erforderlich.
+2. **R2/R5:** Suche liefert filterbare, paginierte Treffer; `get_note` liefert den
+   vollständigen Inhalt und die Revision. Nach einer Mutation ist der neue Inhalt
+   über Suche und Lesezugriff sichtbar.
+3. **R3:** Ein beliebiger Reader-Artikel wird durch Archivierung oder Highlighting
+   allein nicht importiert. Ein bewusst gewählter, auch bereits archivierter Artikel
+   lässt sich als Source mit Original- und Reader-Referenz erfassen.
+4. **R3/R4:** Zwei Sources können einen Insight belegen. Der Entwurf trennt Belege,
+   Interpretation und Anwendung und wird erst nach bewusster Prüfung aktiv.
+5. **R5:** Wiederholung eines Captures mit derselben Reader-ID erzeugt keine zweite
+   Source. Ein Retry mit gleicher Request-ID erzeugt keinen zusätzlichen Commit;
+   eine abweichende Nutzlast wird abgelehnt.
+6. **R5:** Ungültiges Frontmatter, fehlende Link-Ziele und veraltete Revisionen führen
+   zu Fehlern ohne Teiländerungen. Zwei konkurrierende Updates überschreiben
+   einander nicht. Ein Push-Fehler wird nicht als Remote-Erfolg gemeldet.
+7. **R4/R5:** Umbenennen erhält die ID und korrigiert interne Pfadlinks atomar.
+   `dry_run` zeigt den geplanten Diff, verändert aber weder Dateien noch Git.
+8. **R6:** Falls die CLI weitergeführt wird, akzeptiert und validiert sie das neue
+   Schema identisch zum MCP und erhält unbekannte Metadaten bei Updates.
+9. **R7:** Eine Probemigration weist für jede ausgewählte Note Herkunft und neue ID
+   nach; relevante Inhalte und Links bleiben erhalten. Revert stellt den früheren
+   Stand wieder her, der alte Vault bleibt unbeschädigt.
+10. **R1/R5:** Ein Token ohne Schreibrecht kann nicht mutieren; Pfade außerhalb des
+    Wissensbereichs werden abgelehnt. Credentials gelangen nicht in Notes oder Commits.
+
+Diese Kriterien sind noch nicht abgenommen. Dieser Commit liefert ausschließlich
+Dokumentation, keine Implementierung und keine Migration.
+
+### 18.10 Offene Entscheidungen und mögliche spätere Erweiterungen
+
+Vor Implementierung festzulegen sind die endgültigen Repository-Namen, Hosting und
+Authentifizierung des MCP, GitHub-API versus Clone als Storage-Adapter, Paketierung
+des gemeinsamen Kerns sowie der konkrete Pilotbestand für die Migration.
+
+Mögliche spätere Erweiterungen sind **Ideen, keine zugesagte Version-1-Funktion**:
+
+- Backlink-Ansicht und ähnliche Notes als Hilfe beim Einordnen.
+- Semantische Suche/Embeddings als vollständig rekonstruierbarer Zusatzindex.
+- Hinweise auf veraltete oder widersprüchliche Aussagen mit überprüfbaren Gründen.
+- Unterstütztes Zusammenführen und Aufteilen von Notes mit Erhalt der Referenzen.
+- Generierte Topic-Zusammenfassungen und Synthesevorschläge über mehrere Sources.
+- Explizit aktivierte Reader-Markierungen als Capture-Auslöser statt manuellem Aufruf.
+- Abgeleitete Wissenslandkarten und kontrollierte Retrieval-Workflows.
+
+Die vorhandene Root-`spec.md` wird für diese Änderung bewusst weiterverwendet.
+Als separate Dokumentationspflege wird die Migration nach `docs/specs/` mit
+SPEC-IDs, YAML-Frontmatter, Index und Backlog gemäß dem globalen Standard vorgeschlagen.
+Dabei sind heutiges Verhalten, beschlossene Planung und unverbindliche Ideen sauber
+aufzuteilen. Bis dahin wird keine parallele, konkurrierende Spec-Struktur angelegt.

@@ -17,10 +17,11 @@ func newProjectCommand(cfg *config.Config) *cobra.Command {
 		Short: "Manage project notes in 02-projects/",
 		Long: `Primitives for maintaining 02-projects/ project notes.
 
-Each project has one note with four sections:
+Each project has one note with five sections:
   Intent        — what the project is trying to achieve (stable)
   Current Status — what was last worked on (updated each session)
   Next Steps    — what to do next (updated each session)
+  Timeline      — one-line-per-session quick log (append-only)
   Plan History  — dated log of captured plans (append-only)
 
 Designed to be called by Claude Code when processing captured plan notes:
@@ -48,6 +49,7 @@ func newProjectUpdateCommand(cfg *config.Config) *cobra.Command {
 		currentStatus string
 		nextSteps     string
 		planHeading   string
+		timelineEntry string
 		dryRun        bool
 	)
 
@@ -104,6 +106,7 @@ Example — update after a work session (with plan content from stdin):
 				NextSteps:     nextSteps,
 				PlanContent:   planContent,
 				PlanHeading:   planHeading,
+				TimelineEntry: timelineEntry,
 				DryRun:        dryRun,
 			}
 
@@ -135,6 +138,7 @@ Example — update after a work session (with plan content from stdin):
 	cmd.Flags().StringVar(&currentStatus, "current-status", "", "Replace the ## Current Status section")
 	cmd.Flags().StringVar(&nextSteps, "next-steps", "", "Replace the ## Next Steps section")
 	cmd.Flags().StringVar(&planHeading, "plan-heading", "", "Heading for the plan history entry (default: today's date)")
+	cmd.Flags().StringVar(&timelineEntry, "timeline-entry", "", "One-line summary appended to ## Timeline (defaults to --plan-heading value)")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be written without making changes")
 
 	return cmd
